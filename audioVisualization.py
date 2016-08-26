@@ -1,4 +1,4 @@
-import os, sys, mlpy, shutil, struct, simplejson
+import os, sys, shutil, struct, simplejson
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import distance
@@ -7,6 +7,7 @@ import ntpath
 import audioFeatureExtraction as aF	
 import audioTrainTest as aT
 from sklearn.lda import LDA
+from sklearn.decomposition import PCA
 
 def generateColorMap():
 	'''
@@ -48,7 +49,7 @@ def textListToColors(names):
 			Dnames[i,j] = 1 - 2.0 * levenshtein(names[i], names[j]) / float(len(names[i]+names[j]))
 
 	# STEP B: pca dimanesionality reduction to a single-dimension (from the distance space)
-	pca = mlpy.PCA(method='cov') 
+	pca = PCA(method='cov')
 	pca.learn(Dnames)
 	coeff = pca.coeff()
 	
@@ -124,9 +125,8 @@ def visualizeFeaturesFolder(folder, dimReductionMethod, priorKnowledge = "none")
 
 		(F, MEAN, STD) = aT.normalizeFeatures([allMtFeatures])
 		F = np.concatenate(F)
-		pca = mlpy.PCA(method='cov') # pca (eigenvalue decomposition)
-		pca.learn(F)
-		coeff = pca.coeff()
+		pca = PCA() # pca (eigenvalue decomposition)
+		pca.fit(F)
 		
 		# check that the new PCA dimension is at most equal to the number of samples
 		K1 = 2
@@ -136,8 +136,8 @@ def visualizeFeaturesFolder(folder, dimReductionMethod, priorKnowledge = "none")
 		if K2 > F.shape[0]:
 			K2 = F.shape[0]
 
-		finalDims = pca.transform(F, k=K1)
-		finalDims2 = pca.transform(F, k=K2)
+		finalDims = PCA(n_components=K1).fit(F).transform(F)
+		finalDims2 = PCA(n_components=K2).fit(F).transform(F)
 	else:	
 		allMtFeatures, Ys, wavFilesList = aF.dirWavFeatureExtractionNoAveraging(folder, 20.0, 5.0, 0.040, 0.040) # long-term statistics cannot be applied in this context (LDA needs mid-term features)
 		if allMtFeatures.shape[0]==0:
@@ -165,10 +165,9 @@ def visualizeFeaturesFolder(folder, dimReductionMethod, priorKnowledge = "none")
 		clf.fit(F, ldaLabels)	
 		reducedDims =  clf.transform(F)
 
-		pca = mlpy.PCA(method='cov') # pca (eigenvalue decomposition)
-		pca.learn(reducedDims)
-		coeff = pca.coeff()
-		reducedDims = pca.transform(reducedDims, k=2)
+		pca = PCA(n_components=2) # pca (eigenvalue decomposition)
+		pca.fit(reducedDims)
+		reducedDims = pca.transform(reducedDims)
 
 		# TODO: CHECK THIS ... SHOULD LDA USED IN SEMI-SUPERVISED ONLY????
 

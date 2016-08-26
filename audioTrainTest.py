@@ -3,7 +3,6 @@ import numpy
 import time
 import os
 import glob
-import mlpy
 import cPickle
 import shutil
 import audioop
@@ -17,7 +16,7 @@ import matplotlib.pyplot as plt
 import scipy.io as sIO
 from scipy import linalg as la
 from scipy.spatial import distance
-
+import sklearn
 
 def signal_handler(signal, frame):
     print 'You pressed Ctrl+C! - EXIT'
@@ -51,7 +50,7 @@ def classifierWrapper(classifier, classifierType, testSample):
     '''
     This function is used as a wrapper to pattern classification.
     ARGUMENTS:
-        - classifier:        a classifier object of type mlpy.LibSvm or kNN (defined in this library)
+        - classifier:        a classifier object of type sklearn.svm.SVC or kNN (defined in this library)
         - classifierType:    "svm" or "knn"
         - testSample:        a feature vector (numpy array)
     RETURNS:
@@ -75,8 +74,8 @@ def classifierWrapper(classifier, classifierType, testSample):
     if classifierType == "knn":
         [R, P] = classifier.classify(testSample)
     elif classifierType == "svm":
-        R = classifier.pred(testSample)
-        P = classifier.pred_probability(testSample)
+        R = classifier.predict(testSample)
+        P = classifier.predict_proba(testSample)
     return [R, P]
 
 
@@ -94,7 +93,7 @@ def regressionWrapper(model, modelType, testSample):
         TODO
     '''
     if modelType == "svm":
-        return (model.pred(testSample))
+        return (model.predict(testSample))
     #    elif classifierType == "knn":
     #    TODO
 
@@ -162,17 +161,19 @@ def trainSVM(features, Cparam):
     '''
 
     [X, Y] = listOfFeatures2Matrix(features)
-    svm = mlpy.LibSvm(svm_type='c_svc', kernel_type='linear', eps=0.0000001, C=Cparam, probability=True)
-    svm.learn(X, Y)
-    return svm
+    clf = sklearn.svm.SVC(C=Cparam, kernel='linear', probability = True)
+    #svm = mlpy.LibSvm(svm_type='c_svc', kernel_type='linear', eps=0.0000001, C=Cparam, probability=True)
+    clf.fit(X, Y)
+    return clf
 
 
 def trainSVMregression(Features, Y, C):
     #svm = mlpy.LibSvm(svm_type='c_svc', kernel_type='linear', eps=0.0000001, C=C, probability=True)
-    svm = mlpy.LibSvm(svm_type='epsilon_svr', kernel_type='linear', eps=0.001, C=C, probability=False)
-    svm.learn(Features, Y)
-    trainError = numpy.mean(numpy.abs(svm.pred(Features) - Y))
-    return svm, trainError
+    #svm = mlpy.LibSvm(svm_type='epsilon_svr', kernel_type='linear', eps=0.001, C=C, probability=False)
+    clf = sklearn.svm.SVR(C=C, kernel='linear', probability=True)
+    clf.fit(Features, Y)
+    trainError = numpy.mean(numpy.abs(clf.predict(Features) - Y))
+    return clf, trainError
 
 
 def featureAndTrain(listOfDirs, mtWin, mtStep, stWin, stStep, classifierType, modelName, computeBEAT=False, perTrain=0.90):

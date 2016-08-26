@@ -1,12 +1,10 @@
 import numpy
-import mlpy
 import time
 import scipy
 import os
 import audioFeatureExtraction as aF
 import audioTrainTest as aT
 import audioBasicIO
-import matplotlib.pyplot as plt
 from scipy.spatial import distance
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -17,6 +15,8 @@ import sklearn
 import sklearn.hmm
 import cPickle
 import glob
+
+from sklearn.cluster import KMeans
 
 """ General utility functions """
 
@@ -570,7 +570,7 @@ def silenceRemoval(x, Fs, stWin, stStep, smoothWindow=0.5, Weight=0.5, plot=Fals
     ProbOnset = []
     for i in range(ShortTermFeatures.shape[1]):                    # for each frame
         curFV = (ShortTermFeatures[:, i] - MEANSS) / STDSS         # normalize feature vector
-        ProbOnset.append(SVM.pred_probability(curFV)[1])           # get SVM probability (that it belongs to the ONSET class)
+        ProbOnset.append(SVM.predict_proba(curFV)[0][1])           # get SVM probability (that it belongs to the ONSET class)
     ProbOnset = numpy.array(ProbOnset)
     ProbOnset = smoothMovingAvg(ProbOnset, smoothWindow / stStep)  # smooth probability
 
@@ -760,7 +760,10 @@ def speakerDiarization(fileName, numOfSpeakers, mtSize=2.0, mtStep=0.2, stWin=0.
     centersAll = []
     
     for iSpeakers in sRange:
-        cls, means, steps = mlpy.kmeans(MidTermFeaturesNorm.T, k=iSpeakers, plus=True)        # perform k-means clustering
+        clf = KMeans(n_clusters=iSpeakers)
+        clf.fit(MidTermFeaturesNorm.T)
+        cls = clf.labels_
+        means = clf.cluster_centers_
         
         #YDist =   distance.pdist(MidTermFeaturesNorm.T, metric='euclidean')
         #print distance.squareform(YDist).shape
